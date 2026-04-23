@@ -22,11 +22,12 @@ ENV REACT_APP_AUTH_URL=$REACT_APP_AUTH_URL \
 
 RUN npm run build
 
-# ── Stage 2: Serve ────────────────────────────────────────────────────────────
-FROM nginx:1.25-alpine
+# ── Stage 2: Serve as non-root via unprivileged nginx ─────────────────────────
+# nginxinc/nginx-unprivileged runs as uid 101 (non-root) on port 8080 by default
+FROM nginxinc/nginx-unprivileged:1.25-alpine
 
 COPY --from=builder /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 CMD ["nginx", "-g", "daemon off;"]

@@ -1,0 +1,116 @@
+<mxfile host="app.diagrams.net" modified="2024-04-23T00:00:00.000Z" agent="Mozilla/5.0" version="24.2.5" type="device">
+  <diagram id="caresync-arch" name="CareSync Architecture">
+    <mxGraphModel dx="1000" dy="800" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Frontend -->
+        <mxCell id="frontend" value="&lt;b&gt;Frontend&lt;/b&gt;&lt;br&gt;(React + Nginx)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="340" y="80" width="160" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Backend Services -->
+        <mxCell id="auth_svc" value="&lt;b&gt;Auth Service&lt;/b&gt;&lt;br&gt;(Node.js : 4001)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="80" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="patient_svc" value="&lt;b&gt;Patient Service&lt;/b&gt;&lt;br&gt;(Node.js : 4002)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="260" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="doctor_svc" value="&lt;b&gt;Doctor Service&lt;/b&gt;&lt;br&gt;(Node.js : 4003)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="440" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="appt_svc" value="&lt;b&gt;Appointment Service&lt;/b&gt;&lt;br&gt;(Node.js : 4004)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="620" y="240" width="140" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Databases -->
+        <mxCell id="auth_db" value="mongo-auth" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="110" y="380" width="80" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="patient_db" value="mongo-patient" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="290" y="380" width="80" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="doctor_db" value="mongo-doctor" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="470" y="380" width="80" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="appt_db" value="mongo-appointment" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="650" y="380" width="80" height="80" as="geometry" />
+        </mxCell>
+
+        <!-- External Actor -->
+        <mxCell id="user" value="User Browser" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+          <mxGeometry x="405" y="-30" width="30" height="60" as="geometry" />
+        </mxCell>
+
+        <!-- Edges: User to Frontend -->
+        <mxCell id="edge_user_front" edge="1" parent="1" source="user" target="frontend">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edges: Frontend to Services -->
+        <mxCell id="edge_front_auth" edge="1" parent="1" source="frontend" target="auth_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_front_patient" edge="1" parent="1" source="frontend" target="patient_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_front_doctor" edge="1" parent="1" source="frontend" target="doctor_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_front_appt" edge="1" parent="1" source="frontend" target="appt_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Edges: Services to DBs -->
+        <mxCell id="edge_auth_db" edge="1" parent="1" source="auth_svc" target="auth_db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_patient_db" edge="1" parent="1" source="patient_svc" target="patient_db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_doctor_db" edge="1" parent="1" source="doctor_svc" target="doctor_db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="edge_appt_db" edge="1" parent="1" source="appt_svc" target="appt_db">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+
+        <!-- Inter-service Communication -->
+        <mxCell id="edge_appt_auth" edge="1" parent="1" source="appt_svc" target="auth_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#FF3333;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="200" />
+              <mxPoint x="150" y="200" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge_appt_doctor" edge="1" parent="1" source="appt_svc" target="doctor_svc" style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;strokeColor=#FF3333;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="690" y="220" />
+              <mxPoint x="510" y="220" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Notes -->
+        <mxCell id="note_interservice" value="Dashed red lines indicate backend inter-service REST calls (Docker internal network)" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="160" y="150" width="300" height="30" as="geometry" />
+        </mxCell>
+        
+        <!-- Subnets Box -->
+        <mxCell id="box_docker" value="Docker Internal Network" style="rounded=0;whiteSpace=wrap;html=1;fillColor=none;strokeColor=#999999;dashed=1;align=left;verticalAlign=top;spacingLeft=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="180" width="760" height="300" as="geometry" />
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
