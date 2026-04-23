@@ -10,6 +10,12 @@ services:
       - mongo-auth-data:/data/db
     networks:
       - caresync-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   mongo-patient:
     image: mongo:7
@@ -19,6 +25,12 @@ services:
       - mongo-patient-data:/data/db
     networks:
       - caresync-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   mongo-doctor:
     image: mongo:7
@@ -28,6 +40,12 @@ services:
       - mongo-doctor-data:/data/db
     networks:
       - caresync-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   mongo-appointment:
     image: mongo:7
@@ -37,6 +55,12 @@ services:
       - mongo-appointment-data:/data/db
     networks:
       - caresync-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
   # ─── Auth Service ──────────────────────────────────────────────────────────
   auth-service:
@@ -46,14 +70,15 @@ services:
     container_name: auth-service
     restart: unless-stopped
     ports:
-      - "${AUTH_PORT}:${AUTH_PORT}"
+      - "${AUTH_PORT:-4001}:${AUTH_PORT:-4001}"
     environment:
-      PORT: ${AUTH_PORT}
-      MONGO_URI: ${AUTH_MONGO_URI}
-      JWT_SECRET: ${JWT_SECRET}
-      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      PORT: ${AUTH_PORT:-4001}
+      MONGO_URI: ${AUTH_MONGO_URI:-mongodb://mongo-auth:27017/caresync-auth}
+      JWT_SECRET: ${JWT_SECRET:-caresync_super_secret_jwt_key_2024}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
     depends_on:
-      - mongo-auth
+      mongo-auth:
+        condition: service_healthy
     networks:
       - caresync-net
 
@@ -65,13 +90,14 @@ services:
     container_name: patient-service
     restart: unless-stopped
     ports:
-      - "${PATIENT_PORT}:${PATIENT_PORT}"
+      - "${PATIENT_PORT:-4002}:${PATIENT_PORT:-4002}"
     environment:
-      PORT: ${PATIENT_PORT}
-      MONGO_URI: ${PATIENT_MONGO_URI}
-      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${PATIENT_PORT:-4002}
+      MONGO_URI: ${PATIENT_MONGO_URI:-mongodb://mongo-patient:27017/caresync-patient}
+      JWT_SECRET: ${JWT_SECRET:-caresync_super_secret_jwt_key_2024}
     depends_on:
-      - mongo-patient
+      mongo-patient:
+        condition: service_healthy
     networks:
       - caresync-net
 
@@ -83,13 +109,14 @@ services:
     container_name: doctor-service
     restart: unless-stopped
     ports:
-      - "${DOCTOR_PORT}:${DOCTOR_PORT}"
+      - "${DOCTOR_PORT:-4003}:${DOCTOR_PORT:-4003}"
     environment:
-      PORT: ${DOCTOR_PORT}
-      MONGO_URI: ${DOCTOR_MONGO_URI}
-      JWT_SECRET: ${JWT_SECRET}
+      PORT: ${DOCTOR_PORT:-4003}
+      MONGO_URI: ${DOCTOR_MONGO_URI:-mongodb://mongo-doctor:27017/caresync-doctor}
+      JWT_SECRET: ${JWT_SECRET:-caresync_super_secret_jwt_key_2024}
     depends_on:
-      - mongo-doctor
+      mongo-doctor:
+        condition: service_healthy
     networks:
       - caresync-net
 
@@ -101,31 +128,49 @@ services:
     container_name: appointment-service
     restart: unless-stopped
     ports:
-      - "${APPOINTMENT_PORT}:${APPOINTMENT_PORT}"
+      - "${APPOINTMENT_PORT:-4004}:${APPOINTMENT_PORT:-4004}"
     environment:
-      PORT: ${APPOINTMENT_PORT}
-      MONGO_URI: ${APPOINTMENT_MONGO_URI}
-      JWT_SECRET: ${JWT_SECRET}
-      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
-      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL}
+      PORT: ${APPOINTMENT_PORT:-4004}
+      MONGO_URI: ${APPOINTMENT_MONGO_URI:-mongodb://mongo-appointment:27017/caresync-appointment}
+      JWT_SECRET: ${JWT_SECRET:-caresync_super_secret_jwt_key_2024}
+      # Inter-service URLs — use Docker service names, NOT localhost
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL:-http://auth-service:4001}
+      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL:-http://doctor-service:4003}
     depends_on:
-      - mongo-appointment
-      - auth-service
-      - doctor-service
+      mongo-appointment:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+      doctor-service:
+        condition: service_started
     networks:
       - caresync-net
 
   # ─── Frontend ──────────────────────────────────────────────────────────────
+  # REACT_APP_* vars must be baked in at BUILD TIME (not runtime).
+  # Replace <EC2_PUBLIC_IP> with your actual EC2 public IP or domain.
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        # The browser makes API calls from the client machine, so these must
+        # point to the EC2 public IP / domain that is reachable from outside.
+        REACT_APP_AUTH_URL: ${REACT_APP_AUTH_URL:-http://localhost:4001}
+        REACT_APP_PATIENT_URL: ${REACT_APP_PATIENT_URL:-http://localhost:4002}
+        REACT_APP_DOCTOR_URL: ${REACT_APP_DOCTOR_URL:-http://localhost:4003}
+        REACT_APP_APPOINTMENT_URL: ${REACT_APP_APPOINTMENT_URL:-http://localhost:4004}
     container_name: frontend
     restart: unless-stopped
     ports:
-      - "${FRONTEND_PORT}:80"
+      - "${FRONTEND_PORT:-3000}:8080"
     networks:
       - caresync-net
+    depends_on:
+      - auth-service
+      - patient-service
+      - doctor-service
+      - appointment-service
 
 # ─── Named Volumes ─────────────────────────────────────────────────────────
 volumes:
