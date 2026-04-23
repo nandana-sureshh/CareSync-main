@@ -1,0 +1,140 @@
+version: "3.9"
+
+services:
+  # ─── MongoDB Instances (strict isolation) ─────────────────────────────────
+  mongo-auth:
+    image: mongo:7
+    container_name: mongo-auth
+    restart: unless-stopped
+    volumes:
+      - mongo-auth-data:/data/db
+    networks:
+      - caresync-net
+
+  mongo-patient:
+    image: mongo:7
+    container_name: mongo-patient
+    restart: unless-stopped
+    volumes:
+      - mongo-patient-data:/data/db
+    networks:
+      - caresync-net
+
+  mongo-doctor:
+    image: mongo:7
+    container_name: mongo-doctor
+    restart: unless-stopped
+    volumes:
+      - mongo-doctor-data:/data/db
+    networks:
+      - caresync-net
+
+  mongo-appointment:
+    image: mongo:7
+    container_name: mongo-appointment
+    restart: unless-stopped
+    volumes:
+      - mongo-appointment-data:/data/db
+    networks:
+      - caresync-net
+
+  # ─── Auth Service ──────────────────────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: auth-service
+    restart: unless-stopped
+    ports:
+      - "${AUTH_PORT}:${AUTH_PORT}"
+    environment:
+      PORT: ${AUTH_PORT}
+      MONGO_URI: ${AUTH_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+    depends_on:
+      - mongo-auth
+    networks:
+      - caresync-net
+
+  # ─── Patient Service ───────────────────────────────────────────────────────
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    container_name: patient-service
+    restart: unless-stopped
+    ports:
+      - "${PATIENT_PORT}:${PATIENT_PORT}"
+    environment:
+      PORT: ${PATIENT_PORT}
+      MONGO_URI: ${PATIENT_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mongo-patient
+    networks:
+      - caresync-net
+
+  # ─── Doctor Service ────────────────────────────────────────────────────────
+  doctor-service:
+    build:
+      context: ./services/doctor-service
+      dockerfile: Dockerfile
+    container_name: doctor-service
+    restart: unless-stopped
+    ports:
+      - "${DOCTOR_PORT}:${DOCTOR_PORT}"
+    environment:
+      PORT: ${DOCTOR_PORT}
+      MONGO_URI: ${DOCTOR_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - mongo-doctor
+    networks:
+      - caresync-net
+
+  # ─── Appointment Service ───────────────────────────────────────────────────
+  appointment-service:
+    build:
+      context: ./services/appointment-service
+      dockerfile: Dockerfile
+    container_name: appointment-service
+    restart: unless-stopped
+    ports:
+      - "${APPOINTMENT_PORT}:${APPOINTMENT_PORT}"
+    environment:
+      PORT: ${APPOINTMENT_PORT}
+      MONGO_URI: ${APPOINTMENT_MONGO_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      AUTH_SERVICE_URL: ${AUTH_SERVICE_URL}
+      DOCTOR_SERVICE_URL: ${DOCTOR_SERVICE_URL}
+    depends_on:
+      - mongo-appointment
+      - auth-service
+      - doctor-service
+    networks:
+      - caresync-net
+
+  # ─── Frontend ──────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT}:80"
+    networks:
+      - caresync-net
+
+# ─── Named Volumes ─────────────────────────────────────────────────────────
+volumes:
+  mongo-auth-data:
+  mongo-patient-data:
+  mongo-doctor-data:
+  mongo-appointment-data:
+
+# ─── Network ───────────────────────────────────────────────────────────────
+networks:
+  caresync-net:
+    driver: bridge
