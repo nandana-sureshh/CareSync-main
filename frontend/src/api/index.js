@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const AUTH_URL    = 'http://100.52.219.209:4001';
-const PATIENT_URL = 'http://100.52.219.209:4002';
-const DOCTOR_URL  = 'http://100.52.219.209:4003';
-const APPT_URL    = 'http://100.52.219.209:4004';
+const AUTH_URL    = 'http://98.83.39.194:4001';
+const PATIENT_URL = 'http://98.83.39.194:4002';
+const DOCTOR_URL  = 'http://98.83.39.194:4003';
+const APPT_URL    = 'http://98.83.39.194:4004';
 
 // Helper: attach Bearer token
 const withAuth = (config = {}) => {
