@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-const AUTH_URL    = 'http://98.83.39.194:4001';
-const PATIENT_URL = 'http://98.83.39.194:4002';
-const DOCTOR_URL  = 'http://98.83.39.194:4003';
-const APPT_URL    = 'http://98.83.39.194:4004';
+const AUTH_URL    = process.env.REACT_APP_AUTH_URL    || 'http://localhost:4001';
+const PATIENT_URL = process.env.REACT_APP_PATIENT_URL || 'http://localhost:4002';
+const DOCTOR_URL  = process.env.REACT_APP_DOCTOR_URL  || 'http://localhost:4003';
+const APPT_URL    = process.env.REACT_APP_APPOINTMENT_URL || 'http://localhost:4004';
 
 // Helper: attach Bearer token
 const withAuth = (config = {}) => {

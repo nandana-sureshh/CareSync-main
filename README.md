@@ -1,298 +1,325 @@
-# 🏥 CareSync — Microservices Healthcare Appointment System
+# 🏥 CareSync — Healthcare Appointment System
 
-A production-ready, microservices-based healthcare appointment management system built with:
-- **React** (Frontend)
-- **Node.js + Express** (Backend Services)
-- **MongoDB** (Isolated per service)
-- **Docker + Docker Compose** (Containerization & Orchestration)
+> A fully containerised microservices application for managing healthcare appointments between patients and doctors.
 
 ---
 
-## 🚀 Quick Start
+## 📋 Project Overview
+
+CareSync is a **strict microservices** healthcare appointment system built with:
+
+- **Frontend**: React 18 + React Router v6 (served by nginx)
+- **Backend Services**: Node.js + Express.js
+- **Databases**: MongoDB (one isolated instance per service)
+- **Container Orchestration**: Docker Compose (Phase 1), Kubernetes (Phase 2)
+
+---
+
+## 🧩 Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         EC2 / Host Machine                      │
+│                                                                 │
+│  ┌──────────┐   ┌──────────────┐   ┌──────────────┐            │
+│  │ Frontend │   │ auth-service │   │patient-service│            │
+│  │  :3000   │   │    :4001     │   │    :4002      │            │
+│  │ (nginx)  │   │  + mongo-auth│   │+mongo-patient │            │
+│  └──────────┘   └──────────────┘   └──────────────┘            │
+│                                                                 │
+│  ┌───────────────────┐   ┌──────────────────────┐              │
+│  │  doctor-service   │   │  appointment-service  │              │
+│  │      :4003        │   │        :4004          │              │
+│  │  + mongo-doctor   │   │  + mongo-appointment  │              │
+│  └───────────────────┘   └──────────────────────┘              │
+│                                                                 │
+│  All services communicate on the `caresync-net` Docker bridge  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**Key Design Rules:**
+- ❌ No API Gateway
+- ✅ Each service has its **own MongoDB** instance
+- ✅ Inter-service calls use **Docker service names** (e.g. `http://auth-service:4001`)
+- ✅ Frontend uses **public EC2 IP** in `REACT_APP_*` env vars (browser makes direct calls)
+- ✅ JWT includes `userId`, `role`, and `email`
+
+---
+
+## 👥 Roles
+
+| Role    | Registration | Login | Actions |
+|---------|-------------|-------|---------|
+| Patient | Self-register | ✅ | View doctors, book appointments, view own appointments |
+| Doctor  | Pre-seeded   | ✅ | View assigned appointments, accept/reject |
+
+### Pre-seeded Doctor Accounts
+
+| Name | Email | Password | Specialization |
+|------|-------|----------|----------------|
+| Dr. Priya Sharma | priya.sharma@caresync.com | Doctor@123 | Cardiologist |
+| Dr. Rajesh Kumar | rajesh.kumar@caresync.com | Doctor@123 | Orthopedic Surgeon |
+| Dr. Anitha Menon | anitha.menon@caresync.com | Doctor@123 | Dermatologist |
+| Dr. Suresh Nair | suresh.nair@caresync.com | Doctor@123 | General Physician |
+| Dr. Deepa Pillai | deepa.pillai@caresync.com | Doctor@123 | Pediatrician |
+| Dr. Arjun Bose | arjun.bose@caresync.com | Doctor@123 | Neurologist |
+
+---
+
+## 🚀 Setup & Deployment on EC2
 
 ### Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
-- Git
+```bash
+# Install Docker & Docker Compose on EC2 (Amazon Linux 2 / Ubuntu)
+sudo apt-get update
+sudo apt-get install -y docker.io docker-compose-plugin
+
+# Or on Amazon Linux 2:
+sudo yum update -y
+sudo yum install -y docker
+sudo systemctl start docker
+sudo systemctl enable docker
+sudo usermod -aG docker ec2-user
+
+# Install Docker Compose v2
+sudo curl -SL https://github.com/docker/compose/releases/latest/download/docker-compose-linux-x86_64 \
+  -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+```
 
 ### 1. Clone the Repository
 
 ```bash
 git clone <your-repo-url>
-cd CareSync
+cd CareSync-main
 ```
 
 ### 2. Configure Environment Variables
 
-The `.env` file at the root is pre-configured for Docker Compose. Review and update secrets:
-
 ```bash
-# Edit root .env (especially JWT_SECRET)
+cp .env.example .env
 nano .env
 ```
 
-> ⚠️ **Important**: Change `JWT_SECRET` to a strong random value before deploying.
+Edit `.env` and replace `<EC2_PUBLIC_IP>` with your EC2 public IP:
 
-### 3. Run with Docker Compose
+```env
+REACT_APP_AUTH_URL=http://54.123.45.67:4001
+REACT_APP_PATIENT_URL=http://54.123.45.67:4002
+REACT_APP_DOCTOR_URL=http://54.123.45.67:4003
+REACT_APP_APPOINTMENT_URL=http://54.123.45.67:4004
+```
+
+> ⚠️ **Important**: The `REACT_APP_*` vars are baked into the React build at Docker build time.
+> They must be the **public EC2 IP** because the browser (running on your laptop/phone) calls these URLs — not the Docker container.
+
+### 3. Open EC2 Security Group Ports
+
+In your AWS Console → EC2 → Security Groups, open inbound TCP for:
+
+| Port | Service |
+|------|---------|
+| 3000 | Frontend (React) |
+| 4001 | Auth Service |
+| 4002 | Patient Service |
+| 4003 | Doctor Service |
+| 4004 | Appointment Service |
+
+### 4. Build and Run
 
 ```bash
 docker-compose up --build
 ```
 
-That's it! The following services will be available:
-
-| Service              | URL                         |
-|----------------------|-----------------------------|
-| 🌐 Frontend          | http://localhost:3000        |
-| 🔐 Auth Service      | http://localhost:4001        |
-| 🏥 Patient Service   | http://localhost:4002        |
-| 👨‍⚕️ Doctor Service   | http://localhost:4003        |
-| 📅 Appointment Service | http://localhost:4004      |
-
-### 4. Stop Services
+To run in the background:
 
 ```bash
+docker-compose up --build -d
+```
+
+### 5. Access the Application
+
+Open your browser: `http://<EC2_PUBLIC_IP>:3000`
+
+---
+
+## 🗺️ Port Mapping
+
+| Service | Container Port | Host Port |
+|---------|---------------|-----------|
+| Frontend (nginx) | 80 | 3000 |
+| Auth Service | 4001 | 4001 |
+| Patient Service | 4002 | 4002 |
+| Doctor Service | 4003 | 4003 |
+| Appointment Service | 4004 | 4004 |
+
+---
+
+## 🔄 Application Flow
+
+### Patient Booking Flow
+
+```
+1. Register  →  POST /api/auth/register  (auth-service)
+2. Login     →  POST /api/auth/login     (auth-service)  → JWT token
+3. View Doctors → GET /api/doctors        (doctor-service)
+4. Book      →  POST /api/appointments   (appointment-service)
+               └─ validates JWT via auth-service
+               └─ validates doctor via doctor-service
+               └─ saves with status: "pending"
+5. View Appointments → GET /api/appointments/me (appointment-service)
+```
+
+### Doctor Approval Flow
+
+```
+1. Login     →  POST /api/auth/login     (auth-service)  → JWT token (role: doctor)
+2. View Appointments → GET /api/appointments/doctor/mine (appointment-service)
+               └─ validates JWT, resolves doctor profile by email
+3. Accept    →  PATCH /api/appointments/:id/accept  → status: "confirmed"
+   OR
+   Reject    →  PATCH /api/appointments/:id/reject  → status: "rejected"
+```
+
+---
+
+## 📡 API Endpoints Reference
+
+### Auth Service (`:4001`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/auth/register` | Register patient |
+| POST | `/api/auth/login` | Login (patient or doctor) |
+| GET | `/api/auth/validate` | Validate JWT (inter-service) |
+| GET | `/health` | Health check |
+
+### Patient Service (`:4002`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/patients` | Create patient profile |
+| GET | `/api/patients/me` | Get own profile |
+| GET | `/health` | Health check |
+
+### Doctor Service (`:4003`)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/doctors` | List all doctors |
+| GET | `/api/doctors/:id` | Get doctor by ID |
+| GET | `/api/doctors/by-email/:email` | Get doctor by email (inter-service) |
+| GET | `/health` | Health check |
+
+### Appointment Service (`:4004`)
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/appointments` | Book appointment (patient) |
+| GET | `/api/appointments/me` | Get patient's appointments |
+| PATCH | `/api/appointments/:id/cancel` | Cancel appointment (patient) |
+| GET | `/api/appointments/doctor/mine` | Get doctor's appointments |
+| PATCH | `/api/appointments/:id/accept` | Accept appointment (doctor) |
+| PATCH | `/api/appointments/:id/reject` | Reject appointment (doctor) |
+| GET | `/health` | Health check |
+
+---
+
+## 🛠️ Useful Commands
+
+```bash
+# View logs for all services
+docker-compose logs -f
+
+# View logs for a specific service
+docker-compose logs -f frontend
+docker-compose logs -f auth-service
+
+# Stop all services
 docker-compose down
 
-# Remove volumes (clears all data):
+# Stop and remove volumes (fresh database)
 docker-compose down -v
+
+# Rebuild a single service
+docker-compose up --build auth-service
+
+# Check health of all containers
+docker-compose ps
 ```
 
 ---
 
-## 🏗️ Architecture Design
+## 🔧 Troubleshooting
 
-### System Overview
+### Frontend shows blank page / API errors
+- Ensure `.env` has correct `REACT_APP_*` with your EC2 public IP
+- Rebuild frontend after any `.env` change: `docker-compose up --build frontend`
+- Open browser DevTools → Network tab to see which URL is failing
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CareSync System                          │
-│                                                                 │
-│  ┌──────────────┐    REST API calls (Axios)                    │
-│  │   Frontend   │──────────────────────────────┐               │
-│  │   (React)    │                              │               │
-│  │   Port 3000  │                              │               │
-│  └──────────────┘                              ▼               │
-│         │              ┌─────────────────────────────────┐     │
-│         │              │      API Layer (Services)        │     │
-│         │              │                                  │     │
-│         │              │ ┌──────────┐  ┌──────────────┐  │     │
-│         └──────────────▶ │   Auth   │  │   Patient    │  │     │
-│                       │  │ :4001    │  │   :4002      │  │     │
-│                       │  └────┬─────┘  └──────┬───────┘  │     │
-│                       │       │ JWT            │          │     │
-│                       │       │ Validation     │          │     │
-│                       │  ┌────▼─────┐  ┌──────▼───────┐  │     │
-│                       │  │  Doctor  │  │ Appointment  │  │     │
-│                       │  │  :4003   │◀─│   :4004      │  │     │
-│                       │  └──────────┘  └──────────────┘  │     │
-│                       └─────────────────────────────────┘     │
-│                                                                 │
-│  ┌──────────────────────────────────────────────────────┐      │
-│  │                  MongoDB Layer (Isolated)             │      │
-│  │  ┌───────────┐ ┌────────────┐ ┌──────────┐ ┌──────┐ │      │
-│  │  │ mongo-auth│ │mongo-patient│ │mongo-doc │ │mongo │ │      │
-│  │  │           │ │            │ │          │ │-appt │ │      │
-│  │  └───────────┘ └────────────┘ └──────────┘ └──────┘ │      │
-│  └──────────────────────────────────────────────────────┘      │
-└─────────────────────────────────────────────────────────────────┘
-```
+### Services can't connect to MongoDB
+- Check MongoDB containers are healthy: `docker-compose ps`
+- Services have `restart: unless-stopped` and will retry on failure
 
-### Microservices
-
-| Service | Port | Database | Responsibility |
-|---------|------|----------|----------------|
-| `frontend` | 3000 | — | React SPA served via nginx |
-| `auth-service` | 4001 | `mongo-auth` | JWT register/login, token validation |
-| `patient-service` | 4002 | `mongo-patient` | Patient profile CRUD |
-| `doctor-service` | 4003 | `mongo-doctor` | Doctor management |
-| `appointment-service` | 4004 | `mongo-appointment` | Booking, inter-service validation |
-
-### Database Isolation
-
-Each service has its **own dedicated MongoDB container**. No service can access another service's database. Communication between services happens **only through REST APIs**.
-
-```
-auth-service      → mongo-auth      (auth-db)
-patient-service   → mongo-patient   (patient-db)
-doctor-service    → mongo-doctor    (doctor-db)
-appointment-service → mongo-appointment (appointment-db)
-```
+### Doctor login not working
+- Doctors are seeded on auth-service startup
+- Check logs: `docker-compose logs auth-service | grep "Seeded"`
 
 ---
 
-## 🔄 Traffic Flow
-
-### Login Flow
+## 🗂️ Project Structure
 
 ```
-1. User submits email + password on Frontend
-2. Frontend → POST /api/auth/login (Auth Service :4001)
-3. Auth Service validates credentials against mongo-auth
-4. Auth Service generates JWT token and returns it
-5. Frontend stores token in localStorage
-6. All subsequent requests include "Authorization: Bearer <token>"
-```
-
-### Appointment Booking Flow
-
-```
-1. User selects a doctor and submits appointment form on Frontend
-2. Frontend → POST /api/appointments (Appointment Service :4004)
-   Headers: { Authorization: Bearer <token> }
-   Body: { doctorId, appointmentDate, timeSlot, reason }
-
-3. Appointment Service → GET /api/auth/validate (Auth Service :4001)
-   Validates the JWT token and retrieves user details
-
-4. Appointment Service → GET /api/doctors/:id (Doctor Service :4003)
-   Validates that the selected doctor exists
-
-5. Appointment Service saves appointment to mongo-appointment
-6. Success response returned to Frontend
-7. Frontend redirects to /appointments page
-```
-
----
-
-## 📁 Project Structure
-
-```
-CareSync/
-├── docker-compose.yml          # Orchestrates all 9 containers
-├── .env                        # Root environment variables
-├── .env.example                # Template for environment variables
-├── README.md                   # This file
-│
-├── frontend/                   # React SPA
-│   ├── Dockerfile              # Multi-stage: Node build + nginx serve
-│   ├── nginx.conf              # SPA routing + caching + security headers
-│   ├── .env / .env.example
+CareSync-main/
+├── docker-compose.yml          # Orchestrates all services
+├── .env.example                # Environment variable template
+├── frontend/
+│   ├── Dockerfile              # Multi-stage: npm ci → nginx
+│   ├── nginx.conf              # SPA fallback for React Router
 │   └── src/
-│       ├── api/index.js        # Centralized Axios API layer
+│       ├── api/index.js        # All API calls (uses REACT_APP_* vars)
 │       ├── context/AuthContext.jsx
-│       ├── components/Navbar.jsx
 │       └── pages/
 │           ├── LoginPage.jsx
 │           ├── RegisterPage.jsx
 │           ├── DashboardPage.jsx
 │           ├── DoctorsPage.jsx
 │           ├── BookAppointmentPage.jsx
-│           └── AppointmentsPage.jsx
-│
+│           ├── AppointmentsPage.jsx
+│           └── DoctorDashboardPage.jsx
 └── services/
-    ├── auth-service/           # JWT authentication
-    │   ├── Dockerfile          # Multi-stage, non-root user
-    │   ├── .env / .env.example
-    │   └── src/
-    │       ├── server.js
-    │       ├── config/db.js
-    │       ├── models/User.js
-    │       ├── routes/authRoutes.js
-    │       └── controllers/authController.js
-    │
+    ├── auth-service/           # Handles auth + doctor account seeding
     ├── patient-service/        # Patient profile management
-    │   └── src/
-    │       ├── models/Patient.js
-    │       ├── middleware/authMiddleware.js
-    │       └── controllers/patientController.js
-    │
-    ├── doctor-service/         # Doctor directory
-    │   └── src/
-    │       ├── models/Doctor.js
-    │       └── controllers/doctorController.js
-    │
-    └── appointment-service/    # Booking + inter-service communication
-        └── src/
-            ├── models/Appointment.js
-            ├── services/interService.js   ← Axios calls to Auth + Doctor
-            └── controllers/appointmentController.js
+    ├── doctor-service/         # Doctor profiles + seeding
+    └── appointment-service/    # Booking, status management
 ```
 
 ---
 
-## 🔐 API Reference
+## 🔮 Future Scope
 
-### Auth Service (`:4001`)
+### Phase 2 — CI/CD Pipeline
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/register` | Register user |
-| POST | `/api/auth/login` | Login and get JWT |
-| GET | `/api/auth/validate` | Validate JWT (inter-service) |
-| GET | `/health` | Health check |
+- GitHub Actions workflow for automated build & push to ECR
+- Docker image tagging by git commit SHA
+- Automated health-check tests post-deploy
 
-### Patient Service (`:4002`)
+### Phase 3 — Kubernetes
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/patients` | ✅ | Create profile |
-| GET | `/api/patients/me` | ✅ | Get my profile |
-| GET | `/api/patients/:id` | ❌ | Get by ID (internal) |
-
-### Doctor Service (`:4003`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/doctors` | ✅ | Add doctor |
-| GET | `/api/doctors` | ❌ | List doctors |
-| GET | `/api/doctors/:id` | ❌ | Get doctor |
-
-### Appointment Service (`:4004`)
-
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/appointments` | ✅ | Book appointment |
-| GET | `/api/appointments/me` | ✅ | My appointments |
-| GET | `/api/appointments/all` | ✅ Admin | All appointments |
-| PATCH | `/api/appointments/:id/cancel` | ✅ | Cancel |
+- Helm charts for each microservice
+- Kubernetes Secrets for JWT and DB credentials  
+- HorizontalPodAutoscaler for patient and appointment services
+- Ingress controller (nginx) for unified domain routing
+- Persistent Volume Claims for MongoDB
+- Liveness and Readiness probes (already have `/health` endpoints)
 
 ---
 
-## 🐳 Docker Details
+## 🔐 Security Notes
 
-- All services use **multi-stage builds** (builder + production stages)
-- All services run as **non-root users** (`appuser`)
-- Base image: `node:20-alpine` (minimal footprint)
-- Frontend served via `nginx:1.25-alpine`
-- MongoDB `7` with named volumes for persistence
-- All services communicate over the `caresync-net` bridge network
-
----
-
-## 🚀 Kubernetes & CI/CD Ready
-
-- Each service has its own `Dockerfile` — independent deployment
-- All configuration via environment variables — Kubernetes ConfigMaps/Secrets ready
-- No hardcoded values anywhere
-- Stateless application servers — horizontal scaling ready
-- Health check endpoints (`/health`) on every service — readiness/liveness probe ready
+- JWT tokens expire in 7 days (configurable via `JWT_EXPIRES_IN`)
+- Backend services run as non-root user inside containers
+- All passwords are bcrypt-hashed (never stored plain)
+- Doctors cannot self-register — accounts are pre-seeded only
+- Change `JWT_SECRET` in production to a strong random string
 
 ---
 
-## 🛠️ Development (without Docker)
-
-```bash
-# Start each service individually
-cd services/auth-service && npm install && npm run dev
-cd services/patient-service && npm install && npm run dev
-cd services/doctor-service && npm install && npm run dev
-cd services/appointment-service && npm install && npm run dev
-cd frontend && npm install && npm start
-```
-
-Update `.env` files to use `localhost` MongoDB URIs when running locally without Docker.
-
----
-
-## 🔒 Security Considerations
-
-- JWT tokens expire (configurable via `JWT_EXPIRES_IN`)
-- Passwords hashed with bcrypt (10 rounds)
-- Security headers in nginx (`X-Frame-Options`, `X-Content-Type-Options`, etc.)
-- Non-root Docker containers
-- No secrets hardcoded anywhere
-
----
-
-*Built with ❤️ as a production-ready microservices reference architecture.*
+*Built with ❤️ — CareSync Microservices v1.0*

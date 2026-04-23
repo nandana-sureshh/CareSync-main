@@ -22,7 +22,12 @@ const LoginPage = () => {
     try {
       const res = await authApi.login(form);
       login(res.data.user, res.data.token);
-      navigate('/dashboard');
+      // Role-based redirect
+      if (res.data.user.role === 'doctor') {
+        navigate('/doctor/appointments');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
     } finally {
